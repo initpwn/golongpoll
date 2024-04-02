@@ -31,7 +31,7 @@ func Test_LongpollManager_Publish(t *testing.T) {
 		t.Errorf("Expected sub manager's event map to be initially empty. Instead len: %d",
 			len(manager.subManager.SubEventBuffer))
 	}
-	err = manager.Publish("fruits", "apple")
+	_, err = manager.Publish("fruits", "apple")
 	if err != nil {
 		t.Errorf("Unexpected error publishing event: %q", err)
 	}
@@ -72,11 +72,11 @@ func Test_LongpollManager_Publish(t *testing.T) {
 	}
 
 	// Publish two more events
-	err = manager.Publish("veggies", "potato")
+	_, err = manager.Publish("veggies", "potato")
 	if err != nil {
 		t.Errorf("Unexpected error publishing event: %q", err)
 	}
-	err = manager.Publish("fruits", "orange")
+	_, err = manager.Publish("fruits", "orange")
 	if err != nil {
 		t.Errorf("Unexpected error publishing event: %q", err)
 	}
@@ -128,11 +128,11 @@ func Test_LongpollManager_Publish_MaxBufferSize(t *testing.T) {
 		t.Errorf("Expected sub manager's event map to be initially empty. Instead len: %d",
 			len(manager.subManager.SubEventBuffer))
 	}
-	err := manager.Publish("fruits", "apple")
+	_, err := manager.Publish("fruits", "apple")
 	if err != nil {
 		t.Errorf("Unexpected error publishing event: %q", err)
 	}
-	err = manager.Publish("fruits", "banana")
+	_, err = manager.Publish("fruits", "banana")
 	if err != nil {
 		t.Errorf("Unexpected error publishing event: %q", err)
 	}
@@ -170,7 +170,7 @@ func Test_LongpollManager_Publish_MaxBufferSize(t *testing.T) {
 
 	// Now try and publish another event on the same fruit category,
 	// confirm that it works, but the oldest fruit is no longer in buffer
-	err = manager.Publish("fruits", "pear")
+	_, err = manager.Publish("fruits", "pear")
 	if err != nil {
 		t.Errorf("Unexpected error publishing event: %q", err)
 	}
@@ -197,7 +197,7 @@ func Test_LongpollManager_Publish_MaxBufferSize(t *testing.T) {
 	}
 
 	// Now confirm publishing on a different category still works
-	err = manager.Publish("veggies", "potato")
+	_, err = manager.Publish("veggies", "potato")
 	if err != nil {
 		t.Errorf("Unexpected error publishing event: %q", err)
 	}
@@ -227,7 +227,7 @@ func Test_LongpollManager_Publish_InvalidArgs(t *testing.T) {
 		t.Errorf("Failed to create default LongpollManager.  Error was: %q", err)
 	}
 	// You must provide a category:
-	err = manager.Publish("", "apple")
+	_, err = manager.Publish("", "apple")
 	if err == nil {
 		t.Errorf("Expected calls to Publish with blank category would fail.")
 	}
@@ -237,13 +237,13 @@ func Test_LongpollManager_Publish_InvalidArgs(t *testing.T) {
 	for i := 0; i < 1024; i++ {
 		tooLong += "a"
 	}
-	err = manager.Publish(tooLong, "apple")
+	_, err = manager.Publish(tooLong, "apple")
 	if err != nil {
 		t.Errorf("Expected calls to Publish with 1024 len category not to fail, but got: %q.", err)
 	}
 	// But now that we're at 1025, we're boned.
 	tooLong += "a"
-	err = manager.Publish(tooLong, "apple")
+	_, err = manager.Publish(tooLong, "apple")
 	if err == nil {
 		t.Errorf("Expected calls to Publish with blank category would fail.")
 	}
@@ -1129,6 +1129,7 @@ func Test_LongpollManager_EventExpiration(t *testing.T) {
 }
 
 // Shared by multiple tests with manager configured different ways:
+//
 //gocyclo:ignore
 func deleteOnFetchTest(manager *LongpollManager, t *testing.T) {
 	sm := manager.subManager
@@ -1523,10 +1524,11 @@ func Test_LongpollManager_PurgingOldCategories_Inactivity(t *testing.T) {
 	}
 }
 
-//gocyclo:ignore
 // Tests the bug from issue #19 where clients see only the first of multiple events
 // published within the same millisecond. The fix for this involves adding an event ID
 // field and including the last seen id in the request to use in addition to since_time.
+//
+//gocyclo:ignore
 func Test_MultipleConsecutivePublishedEvents(t *testing.T) {
 	manager, _ := StartLongpoll(Options{
 		LoggingEnabled: true,

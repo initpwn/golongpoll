@@ -67,7 +67,7 @@ type LongpollManager struct {
 // the category param must be a non-empty string no longer than 1024,
 // otherwise you get an error. Cannot be called after LongpollManager.Shutdown()
 // or LongpollManager.ShutdownWithTimeout(seconds int).
-func (m *LongpollManager) Publish(category string, data interface{}) error {
+func (m *LongpollManager) Publish(category string, data interface{}) (uuid.UUID, error) {
 	if !m.started {
 		panic("LongpollManager cannot call Publish, never started. LongpollManager must be created via StartLongPoll(Options).")
 	}
@@ -77,19 +77,19 @@ func (m *LongpollManager) Publish(category string, data interface{}) error {
 	}
 
 	if len(category) == 0 {
-		return errors.New("empty category")
+		return uuid.Nil, errors.New("empty category")
 	}
 	if len(category) > 1024 {
-		return errors.New("category cannot be longer than 1024")
+		return uuid.Nil, errors.New("category cannot be longer than 1024")
 	}
 
 	u, err := uuid.NewV4()
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	m.eventsIn <- &Event{timeToEpochMilliseconds(time.Now()), category, data, u}
-	return nil
+	return u, nil
 }
 
 // Shutdown will stop the LongpollManager's run goroutine and call Addon.OnShutdown.
@@ -361,9 +361,15 @@ func getLongPollPublishHandler(manager *LongpollManager) func(w http.ResponseWri
 			return
 		}
 
-		manager.Publish(pubData.Category, pubData.Data)
+		u, err := manager.Publish(pubData.Category, pubData.Data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println("WARN - golongpoll.publishHandler - Unable to generate UUID. err ", err)
+			io.WriteString(w, "{\"error\": \"Internal error.\"}")
+			return
+		}
 		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, "{\"success\": true}")
+		io.WriteString(w, fmt.Sprintf("{\"success\": true}, {\"id\":\"%s\"}", u))
 	}
 }
 
